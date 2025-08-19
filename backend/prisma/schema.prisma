@@ -1,0 +1,79 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  username  String
+  email     String   @unique
+  password  String
+  role      UserRole @default(CASHIER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  orders Order[] @relation("CashierOrders")
+}
+
+enum UserRole {
+  CASHIER
+  ADMIN
+}
+
+model Category {
+  id   Int    @id @default(autoincrement())
+  name String @unique
+
+  menus Menu[]
+}
+
+model Menu {
+  id         Int      @id @default(autoincrement())
+  name       String
+  price      Int
+  categoryId Int
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  category Category @relation(fields: [categoryId], references: [id])
+
+  orderItems OrderItem[]
+}
+
+model Order {
+  id           Int         @id @default(autoincrement())
+  customerName String
+  notes        String?
+  tableNumber  Int?
+  cashierId    Int?
+  cashier      User?       @relation("CashierOrders", fields: [cashierId], references: [id])
+  status       OrderStatus @default(PENDING)
+  totalPrice   Int         @default(0)
+  paidAt       DateTime?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  items OrderItem[]
+}
+
+model OrderItem {
+  id        Int      @id @default(autoincrement())
+  orderId   Int
+  menuId    Int
+  quantity  Int      @default(1)
+  price     Int
+  createdAt DateTime @default(now())
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  menu  Menu  @relation(fields: [menuId], references: [id])
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+}
