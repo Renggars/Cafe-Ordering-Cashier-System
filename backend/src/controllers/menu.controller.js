@@ -7,10 +7,11 @@ import {
 
 const createMenu = async (req, res) => {
   try {
-    const result = await menuService.createMenu(req.body);
+    const result = await menuService.createMenu(req.body, req.file);
     responseApiCreateSuccess(res, "Success create menu", result);
   } catch (err) {
     responseApiFailed(res, `Failed create menu ${err}`);
+    console.log(err);
   }
 };
 
@@ -37,7 +38,8 @@ const updateMenu = async (req, res) => {
   try {
     const result = await menuService.updateMenuById(
       parseInt(req.params.menuId),
-      req.body
+      req.body,
+      req.file
     );
     responseApiSuccess(res, "Success update menu", result);
   } catch (err) {

@@ -1,6 +1,7 @@
 import express from "express";
 import validate from "../../middlewares/validate.js";
 import { auth } from "../../middlewares/auth.js";
+import upload from "../../utils/upload.js";
 
 import menuController from "../../controllers/menu.controller.js";
 import menuValidation from "../../validations/menuValidation.js";
@@ -9,13 +10,23 @@ const router = express.Router();
 
 router
   .route("/")
-  .post(auth(), validate(menuValidation.createMenu), menuController.createMenu)
+  .post(
+    auth(),
+    upload.single("imageUrl"),
+    validate(menuValidation.createMenu),
+    menuController.createMenu
+  )
   .get(validate(menuValidation.querySchema), menuController.getMenus);
 
 router
   .route("/:menuId")
   .get(validate(menuValidation.getMenu), menuController.getMenu)
-  .put(auth(), validate(menuValidation.updateMenu), menuController.updateMenu)
+  .put(
+    auth(),
+    upload.single("imageUrl"),
+    validate(menuValidation.updateMenu),
+    menuController.updateMenu
+  )
   .delete(
     auth(),
     validate(menuValidation.deleteMenu),
