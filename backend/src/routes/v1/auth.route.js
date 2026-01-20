@@ -10,7 +10,7 @@ router.post(
   "/register",
   authAdmin(),
   validate(authValidation.register),
-  authController.register
+  authController.register,
 );
 
 router.post("/login", validate(authValidation.login), authController.login);

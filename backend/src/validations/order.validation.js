@@ -2,18 +2,26 @@ import Joi from "joi";
 
 const createOrder = {
   body: Joi.object().keys({
-    customerName: Joi.string().required(),
+    customerName: Joi.string().required().messages({
+      "string.empty": "Nama pelanggan tidak boleh kosong",
+    }),
     notes: Joi.string().allow("", null).optional(),
-    tableNumber: Joi.number().integer().optional(),
+    tableNumber: Joi.string().allow(null).optional(),
+    paymentType: Joi.string().valid("CASH", "GATEWAY").required().messages({
+      "any.only": "Metode pembayaran harus CASH atau GATEWAY",
+    }),
     items: Joi.array()
       .items(
         Joi.object({
           menuId: Joi.number().integer().required(),
-          quantity: Joi.number().integer().min(1).default(1),
-        })
+          quantity: Joi.number().integer().min(1).required(),
+        }),
       )
       .min(1)
-      .required(),
+      .required()
+      .messages({
+        "array.min": "Minimal harus ada 1 menu yang dipesan",
+      }),
   }),
 };
 

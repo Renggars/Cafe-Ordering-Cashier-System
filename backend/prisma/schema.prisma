@@ -3,9 +3,8 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  provider = "mysql"
+  url      = env("DATABASE_URL")
 }
 
 model User {
@@ -47,17 +46,24 @@ model Menu {
 }
 
 model Order {
-  id           Int         @id @default(autoincrement())
+  id           Int     @id @default(autoincrement())
   customerName String
   notes        String?
-  tableNumber  Int?
-  cashierId    Int?
-  cashier      User?       @relation("CashierOrders", fields: [cashierId], references: [id])
-  status       OrderStatus @default(PENDING)
-  totalPrice   Int         @default(0)
-  paidAt       DateTime?
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
+  tableNumber  String?
+
+  paymentType PaymentType @default(CASH)
+  // Reference ID dari Midtrans/Xendit (opsional, untuk tracking)
+  paymentId   String?     @unique
+
+  cashierId Int?
+  cashier   User? @relation("CashierOrders", fields: [cashierId], references: [id])
+
+  status OrderStatus @default(PENDING)
+
+  totalPrice Int       @default(0)
+  paidAt     DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
 
   items OrderItem[]
 }
@@ -75,6 +81,12 @@ model OrderItem {
 }
 
 enum OrderStatus {
-  PENDING
-  CONFIRMED
+  PENDING // Belum dibayar (untuk CASH) atau sedang proses bayar (untuk GATEWAY)
+  CONFIRMED // Sudah dibayar & dikonfirmasi (baik lewat Webhook PG atau klik manual Admin)
+  FAILED
+}
+
+enum PaymentType {
+  CASH
+  GATEWAY
 }

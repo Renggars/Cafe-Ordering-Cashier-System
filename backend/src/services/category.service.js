@@ -34,6 +34,7 @@ const queryCategories = async (filter, options) => {
           id: true,
           name: true,
           price: true,
+          imageUrl: true,
         },
       },
     },

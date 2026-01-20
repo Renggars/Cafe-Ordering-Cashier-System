@@ -12,6 +12,7 @@ import { errorConverter, errorHandler } from "./middlewares/error.js";
 import ApiError from "./utils/ApiError.js";
 import setupSwagger from "./docs/swaggerConfig.js";
 import { sanitize } from "./middlewares/sanitizeXss.js";
+import path from "path";
 
 const app = express();
 
@@ -22,7 +23,11 @@ if (config.env !== "test") {
 }
 
 // set security HTTP headers
-app.use(helmet());
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+  }),
+);
 
 // Parse JSON request body
 app.use(express.json());
@@ -42,9 +47,11 @@ app.use(
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true,
-  })
+  }),
 );
 app.options("*", cors());
+
+app.use("/uploads", express.static(path.join(process.cwd(), "public/uploads")));
 
 // Route dasar untuk testing
 app.get("/", (req, res) => {

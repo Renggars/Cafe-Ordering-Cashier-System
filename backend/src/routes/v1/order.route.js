@@ -12,16 +12,16 @@ router
   .get(
     auth(),
     validate(orderValidation.querySchema),
-    orderController.getOrders
+    orderController.getOrders,
   );
 
 router
   .route("/:orderId")
-  .get(auth(), validate(orderValidation.getOrder), orderController.getOrderById)
+  .get(validate(orderValidation.getOrder), orderController.getOrderById)
   .delete(
     auth(),
     validate(orderValidation.deleteOrder),
-    orderController.deleteOrder
+    orderController.deleteOrder,
   );
 
 router.put("/:orderId/pay", auth(), orderController.payOrder);

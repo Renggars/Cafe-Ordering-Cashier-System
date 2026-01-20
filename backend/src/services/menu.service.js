@@ -1,9 +1,26 @@
 import httpStatus from "http-status";
 import prisma from "../../prisma/index.js";
 import ApiError from "../utils/ApiError.js";
-import uploadFile from "../utils/uploadFile.js";
+import fs from "fs/promises";
+import fsSync from "fs";
+import path from "path";
 
-const BUCKET_NAME = "menu-images";
+/**
+ * Helper untuk menghapus file fisik di lokal
+ */
+const deleteLocalFile = async (imageUrl) => {
+  if (imageUrl) {
+    const filePath = path.join(process.cwd(), "public", imageUrl);
+
+    if (fsSync.existsSync(filePath)) {
+      try {
+        await fs.unlink(filePath);
+      } catch (err) {
+        console.warn("Gagal menghapus file di lokal:", err.message);
+      }
+    }
+  }
+};
 
 /**
  * Create a menu
@@ -13,7 +30,7 @@ const BUCKET_NAME = "menu-images";
 const createMenu = async (menuBody, file) => {
   let imageUrl = null;
   if (file) {
-    imageUrl = await uploadFile(file, BUCKET_NAME);
+    imageUrl = `/uploads/menu-images/${file.filename}`;
   }
   const newMenu = await prisma.menu.create({
     data: {
@@ -88,17 +105,8 @@ const updateMenuById = async (menuId, updateBody, file) => {
   let newImageUrl = oldImageUrl;
 
   if (file) {
-    newImageUrl = await uploadFile(file, BUCKET_NAME, oldImageUrl);
-  } else if (updateBody.imageUrl === null) {
-    if (oldImageUrl) {
-      const { data: removeData, error: removeError } = await supabase.storage
-        .from(BUCKET_NAME)
-        .remove([oldImageUrl.split("/").pop()]);
-      if (removeError) {
-        console.warn("Failed to remove old image:", removeError.message);
-      }
-    }
-    newImageUrl = null;
+    await deleteLocalFile(menu.imageUrl);
+    newImageUrl = `/uploads/menu-images/${file.filename}`;
   }
 
   const updatedMenu = await prisma.menu.update({
@@ -120,17 +128,7 @@ const updateMenuById = async (menuId, updateBody, file) => {
 const deleteMenuById = async (menuId) => {
   const menu = await getMenuById(menuId);
 
-  // Hapus gambar dari Supabase Storage jika ada
-  if (menu.imageUrl) {
-    const filename = menu.imageUrl.split("/").pop();
-    const { error: removeError } = await supabase.storage
-      .from(BUCKET_NAME)
-      .remove([filename]);
-
-    if (removeError) {
-      console.warn("Gagal menghapus file lama:", removeError.message);
-    }
-  }
+  await deleteLocalFile(menu.imageUrl);
 
   const deletedMenu = await prisma.menu.delete({
     where: { id: menuId },
