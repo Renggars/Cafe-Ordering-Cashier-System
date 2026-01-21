@@ -52,18 +52,23 @@ model Order {
   tableNumber  String?
 
   paymentType PaymentType @default(CASH)
-  // Reference ID dari Midtrans/Xendit (opsional, untuk tracking)
-  paymentId   String?     @unique
+
+  paymentId String? @unique
 
   cashierId Int?
   cashier   User? @relation("CashierOrders", fields: [cashierId], references: [id])
 
   status OrderStatus @default(PENDING)
 
-  totalPrice Int       @default(0)
-  paidAt     DateTime?
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
+  subTotal       Int @default(0)
+  taxAmount      Int @default(0)
+  serviceAmount  Int @default(0)
+  discountAmount Int @default(0)
+  totalPrice     Int @default(0)
+
+  paidAt    DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
   items OrderItem[]
 }
@@ -80,6 +85,24 @@ model OrderItem {
   menu  Menu  @relation(fields: [menuId], references: [id])
 }
 
+model GlobalSetting {
+  id Int @id @default(1) // Selalu gunakan ID 1
+
+  // Pengaturan Pajak Global
+  taxPercentage Float   @default(0)
+  isTaxActive   Boolean @default(false)
+
+  // Pengaturan Layanan Global
+  servicePercentage Float   @default(0)
+  isServiceActive   Boolean @default(false)
+
+  // Pengaturan Diskon Global
+  discountPercentage Float   @default(0)
+  isDiscountActive   Boolean @default(false)
+
+  updatedAt DateTime @updatedAt
+}
+
 enum OrderStatus {
   PENDING // Belum dibayar (untuk CASH) atau sedang proses bayar (untuk GATEWAY)
   CONFIRMED // Sudah dibayar & dikonfirmasi (baik lewat Webhook PG atau klik manual Admin)
@@ -87,6 +110,10 @@ enum OrderStatus {
 }
 
 enum PaymentType {
-  CASH
   GATEWAY
+  CASH
+  QRIS
+  DEBIT
+  CREDIT
+  TRANSFER
 }

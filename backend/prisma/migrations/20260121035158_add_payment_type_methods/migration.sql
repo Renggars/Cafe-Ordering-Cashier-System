@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE `order` MODIFY `paymentType` ENUM('CASH', 'GATEWAY', 'QRIS', 'DEBIT', 'CREDIT', 'TRANSFER') NOT NULL DEFAULT 'CASH';

@@ -4,6 +4,7 @@ import userService from "./user.service.js";
 import categoryService from "./category.service.js";
 import menuService from "./menu.service.js";
 import orderService from "./order.service.js";
+import settingService from "./setting.service.js";
 
 export default {
   authService,
@@ -12,4 +13,5 @@ export default {
   categoryService,
   menuService,
   orderService,
+  settingService,
 };

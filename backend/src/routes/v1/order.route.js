@@ -2,13 +2,17 @@ import express from "express";
 import validate from "../../middlewares/validate.js";
 import orderValidation from "../../validations/order.validation.js";
 import orderController from "../../controllers/order.controller.js";
-import { auth } from "../../middlewares/auth.js";
+import { auth, authOptional } from "../../middlewares/auth.js";
 
 const router = express.Router();
 
 router
   .route("/")
-  .post(validate(orderValidation.createOrder), orderController.createOrder)
+  .post(
+    authOptional(),
+    validate(orderValidation.createOrder),
+    orderController.createOrder,
+  )
   .get(
     auth(),
     validate(orderValidation.querySchema),

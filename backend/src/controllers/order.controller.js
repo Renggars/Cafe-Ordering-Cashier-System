@@ -50,11 +50,29 @@ const createOrder = async (req, res) => {
   try {
     const { paymentType, customerName } = req.body;
 
-    const order = await orderService.createOrder(req.body);
+    const cashierId = req.user ? req.user.id : null;
+
+    let finalCustomerName = customerName;
+    if (!cashierId) {
+      if (!customerName || customerName.trim() === "") {
+        return responseApiFailed(
+          res,
+          "Nama pelanggan wajib diisi untuk pesanan web",
+          400,
+        );
+      }
+    } else {
+      finalCustomerName = customerName || "";
+    }
+
+    const order = await orderService.createOrder(
+      { ...req.body, customerName: finalCustomerName },
+      cashierId,
+    );
 
     let resultData = { ...order };
 
-    if (paymentType?.toUpperCase() === "GATEWAY") {
+    if (paymentType?.toUpperCase() === "GATEWAY" && !cashierId) {
       const parameter = {
         transaction_details: {
           order_id: order.id,

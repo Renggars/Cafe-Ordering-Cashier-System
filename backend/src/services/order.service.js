@@ -43,31 +43,69 @@ const updateStatusFromMidtrans = async (statusResponse) => {
   return null;
 };
 
-const createOrder = async (data) => {
+const createOrder = async (data, cashierId = null) => {
   const { customerName, notes, tableNumber, items, paymentType } = data;
 
   return await prisma.$transaction(async (tx) => {
+    // 1. Ambil Data pajak, tax, diskon (Selalu ID 1)
+    const settings = await tx.globalSetting.findUnique({
+      where: { id: 1 },
+    });
+
+    // 2. Ambil data menu
     const menuIds = items.map((item) => item.menuId);
     const menus = await tx.menu.findMany({
       where: { id: { in: menuIds } },
     });
 
-    let totalPrice = 0;
-
-    const orderItems = items.map((item) => {
+    // 3. Hitung subTotal & Map Data Items
+    let subTotal = 0;
+    const orderItemsData = items.map((item) => {
       const menu = menus.find((m) => m.id === item.menuId);
       if (!menu)
         throw new Error(`Menu dengan ID ${item.menuId} tidak ditemukan`);
 
-      const price = menu.price * item.quantity;
-      totalPrice += price;
+      const itemPrice = menu.price * item.quantity;
+      subTotal += itemPrice;
 
       return {
         menuId: item.menuId,
         quantity: item.quantity,
-        price: menu.price,
+        price: menu.price, // Harga satuan saat transaksi terjadi
       };
     });
+
+    // 4. Kalkulasi Pajak, Service, dan Diskon berdasarkan GlobalSetting
+    let taxAmount = 0;
+    let serviceAmount = 0;
+    let discountAmount = 0;
+
+    if (settings) {
+      if (settings.isTaxActive) {
+        taxAmount = Math.round(subTotal * (settings.taxPercentage / 100));
+      }
+      if (settings.isServiceActive) {
+        serviceAmount = Math.round(
+          subTotal * (settings.servicePercentage / 100),
+        );
+      }
+      if (settings.isDiscountActive) {
+        discountAmount = Math.round(
+          subTotal * (settings.discountPercentage / 100),
+        );
+      }
+    }
+
+    const totalPrice = subTotal + taxAmount + serviceAmount - discountAmount;
+
+    /**
+     * 5. LOGIKA STATUS
+     * - Jika cashierId ada (Request dari Flutter POS), status langsung CONFIRMED & paidAt diisi.
+     * - Jika cashierId null (Request dari Website), status PENDING.
+     */
+    const isFromCashier = cashierId !== null;
+    const status = isFromCashier ? "CONFIRMED" : "PENDING";
+    const paidAt = isFromCashier ? new Date() : null;
 
     const order = await tx.order.create({
       data: {
@@ -75,10 +113,16 @@ const createOrder = async (data) => {
         notes,
         tableNumber: tableNumber ? String(tableNumber) : null,
         paymentType,
+        status,
+        paidAt,
+        cashierId,
+        subTotal,
+        taxAmount,
+        serviceAmount,
+        discountAmount,
         totalPrice,
-        status: "PENDING",
         items: {
-          create: orderItems,
+          create: orderItemsData,
         },
       },
       include: {
@@ -92,21 +136,13 @@ const createOrder = async (data) => {
       },
     });
 
-    return {
-      id: order.id,
-      customerName: order.customerName,
-      tableNumber: order.tableNumber,
-      paymentType: order.paymentType,
-      status: order.status,
-      totalPrice: order.totalPrice,
-      items: order.items,
-    };
+    return order;
   });
 };
 
 const getOrders = async (filter, options) => {
   const page = parseInt(options.page || 1);
-  const limit = parseInt(options.limit || 10);
+  const limit = parseInt(options.limit || 25);
   const skip = (page - 1) * limit;
 
   const where = {};
@@ -114,12 +150,36 @@ const getOrders = async (filter, options) => {
     where.status = filter.status;
   }
 
+  // Filter Search
+  if (filter.search) {
+    const searchInt = parseInt(filter.search);
+
+    where.OR = [
+      // Cari berdasarkan nama pelanggan (String)
+      { customerName: { contains: filter.search, mode: "insensitive" } },
+    ];
+
+    // Jika input search adalah angka, tambahkan filter untuk mencari ID secara spesifik
+    if (!isNaN(searchInt)) {
+      where.OR.push({ id: searchInt });
+    }
+  }
+
   const [orders, totalItems] = await Promise.all([
     prisma.order.findMany({
       where,
       skip,
       take: limit,
-      include: { items: true },
+      include: {
+        items: {
+          include: {
+            menu: true,
+          },
+        },
+        cashier: {
+          select: { username: true },
+        },
+      },
       orderBy: { createdAt: "desc" },
     }),
     prisma.order.count({ where }),
@@ -132,6 +192,7 @@ const getOrders = async (filter, options) => {
     totalItems,
     totalPages,
     currentPage,
+    perPage: limit,
   };
 
   return {
@@ -168,6 +229,11 @@ const deleteOrder = async (orderId) => {
 };
 
 const payOrder = async (orderId, cashierId) => {
+  const order = await prisma.order.findUnique({
+    where: { id: Number(orderId) },
+  });
+  if (!order) throw new ApiError(httpStatus.NOT_FOUND, "Order tidak ditemukan");
+
   return await prisma.order.update({
     where: { id: Number(orderId) },
     data: {

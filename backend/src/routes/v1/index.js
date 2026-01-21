@@ -5,6 +5,7 @@ import categoryRoute from "./category.route.js";
 import menuRoute from "./menu.route.js";
 import orderRoute from "./order.route.js";
 import paymentRoute from "./payment.route.js";
+import settingRoute from "./setting.route.js";
 
 const router = express.Router();
 
@@ -32,6 +33,10 @@ const defaultRoutes = [
   {
     path: "/payment",
     route: paymentRoute,
+  },
+  {
+    path: "/settings",
+    route: settingRoute,
   },
 ];
 

@@ -2,14 +2,12 @@ import Joi from "joi";
 
 const createOrder = {
   body: Joi.object().keys({
-    customerName: Joi.string().required().messages({
-      "string.empty": "Nama pelanggan tidak boleh kosong",
-    }),
+    customerName: Joi.string().allow("", null).optional(),
     notes: Joi.string().allow("", null).optional(),
     tableNumber: Joi.string().allow(null).optional(),
-    paymentType: Joi.string().valid("CASH", "GATEWAY").required().messages({
-      "any.only": "Metode pembayaran harus CASH atau GATEWAY",
-    }),
+    paymentType: Joi.string()
+      .valid("CASH", "GATEWAY", "QRIS", "DEBIT", "CREDIT", "TRANSFER")
+      .required(),
     items: Joi.array()
       .items(
         Joi.object({

@@ -15,7 +15,7 @@ const auth = () => async (req, res, next) => {
     passport.authenticate(
       "jwt",
       { session: false },
-      verifyCallback(req, resolve, reject)
+      verifyCallback(req, resolve, reject),
     )(req, res, next);
   })
     .then(() => next())
@@ -28,7 +28,7 @@ const authAdmin = () => async (req, res, next) => {
     passport.authenticate(
       "jwt",
       { session: false },
-      verifyCallback(req, resolve, reject)
+      verifyCallback(req, resolve, reject),
     )(req, res, next);
   })
     .then(() => {
@@ -41,4 +41,18 @@ const authAdmin = () => async (req, res, next) => {
     .catch((err) => next(err));
 };
 
-export { auth, authAdmin };
+const authOptional = () => async (req, res, next) => {
+  return new Promise((resolve, reject) => {
+    passport.authenticate("jwt", { session: false }, (err, user, info) => {
+      if (user) {
+        req.user = user;
+      }
+
+      resolve();
+    })(req, res, next);
+  })
+    .then(() => next())
+    .catch((err) => next(err));
+};
+
+export { auth, authAdmin, authOptional };
